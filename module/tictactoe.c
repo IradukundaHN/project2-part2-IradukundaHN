@@ -137,7 +137,7 @@ static int device_release(struct inode *inode, struct file *file)
  */
 static ssize_t device_read(struct file *filp, char __user *outbuffer, size_t len, loff_t * offset)
 {
-	int retval;
+	int retval=0;
 
         /*copy to user function*/
 	retval = copy_to_user(outbuffer, cmd, len);
@@ -164,6 +164,18 @@ static ssize_t device_read(struct file *filp, char __user *outbuffer, size_t len
                 printk("ILLMOVE\n");
                 return strlen(cmd);
         }
+	//adding OOT and NOGAME after modifying the given driver file
+	 if (strcmp(cmd, "OOT\n") ==0)
+        {
+                printk("OOT\n");
+                return strlen(cmd);
+        }
+	if (strcmp(cmd, "NOGAME\n") ==0)
+        {
+                printk("NOGAME\n");
+                return strlen(cmd);
+        }
+
 	/*Error in read*/
 	if (retval<0){
 		printk(KERN_ALERT "Read isn't supported.\n");
@@ -177,7 +189,7 @@ static ssize_t device_read(struct file *filp, char __user *outbuffer, size_t len
  */
 static ssize_t device_write(struct file *filp, const char __user *inbuffer, size_t len, loff_t * off)
 {
-	int retval;
+	int retval=0;
 
 	if (len > sizeof(cmd)-1 ){
 		len = sizeof(cmd)-1;

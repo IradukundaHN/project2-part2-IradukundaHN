@@ -19,6 +19,9 @@ static char respbuf[256];
 #define PLWIN       2
 #define CPUWIN      3
 #define TIEGAME     4
+//adding OOT and NOGAME definition
+#define OOT         5
+#define NOGAME      6
 
 static ssize_t send_cmd(int fd, const char *cmd, size_t len) {
     ssize_t rs;
@@ -50,6 +53,31 @@ static int init_game(int fp, int which) {
     cmd[4] = '\n';
 
     if(which == 1)
+        cmd[3] = 'X';
+    else
+        cmd[3] = 'O'; 
+
+    /* Send the command and read the response. */
+    rs = send_cmd(fp, cmd, 5);
+
+    /* Make sure the response matches what we expect. */
+    if(rs != 3 || memcmp(respbuf, "OK\n", 3))
+        return -1;
+
+    return 0;
+}
+
+//adding extra-credit part - AI computer player
+static int init_game_extra(int fp, int which) {
+    char cmd[5];
+    ssize_t rs;
+
+    cmd[0] = '0';
+    cmd[1] = '4';
+    cmd[2] = ' ';
+    cmd[4] = '\n';
+
+    if(which == 2)
         cmd[3] = 'X';
     else
         cmd[3] = 'O';
@@ -128,6 +156,11 @@ static int request_cpu_move(int fp) {
         return CPUWIN;
     else if(rs == 4 && !memcmp(respbuf, "TIE\n", 4))
         return TIEGAME;
+    //adding OOT and NOGAME
+    else if(rs == 4 && !memcmp(respbuf, "OOT\n", 4))
+        return OOT;
+    else if(rs == 7 && !memcmp(respbuf, "NOGAME\n", 7))
+        return NOGAME;
     else {
         printf("CPU Move returned unknown error code: ");
         printf("%.*s", rs, respbuf);
@@ -159,6 +192,11 @@ static int make_move(int fp, int x, int y) {
         return TIEGAME;
     else if(rs == 8 && !memcmp(respbuf, "ILLMOVE\n", 8))
         return ILLMOVE;
+    //adding OOT and NOGAME
+    else if(rs == 4 && !memcmp(respbuf, "OOT\n", 4))
+        return OOT;
+    else if(rs == 7 && !memcmp(respbuf, "NOGAME\n", 7))
+        return NOGAME;
     else {
         printf("Player Move returned unknown error code: ");
         printf("%.*s", rs, respbuf);
@@ -180,6 +218,17 @@ static void exit_on_error(int fp, int err) {
 
         case TIEGAME:
             printf("Game ends in a tie...\n");
+            close(fp);
+            exit(EXIT_SUCCESS);
+
+  	//adding cases OOT and NOGAME
+	 case OOT:
+            printf("Moves outside of turn...\n");
+            close(fp);
+            exit(EXIT_SUCCESS);
+
+	 case NOGAME:
+            printf("Game hasn't started or over...\n");
             close(fp);
             exit(EXIT_SUCCESS);
 
@@ -206,6 +255,12 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the game board. */
     if(init_game(fd, which)) {
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+    //calling the extra-credit init function
+    if(init_game_extra(fd, which)) {
         close(fd);
         exit(EXIT_FAILURE);
     }
@@ -259,8 +314,57 @@ int main(int argc, char *argv[]) {
         }
     }
 
+   //Adding extra-credit - AI Computer player
+   for(;;) {
+        if(which == 2) {
+            rv = ILLMOVE;
+            while(rv == ILLMOVE) {
+                read_move(&x, &y);
+                rv = make_move(fd, x, y);
+
+                if(rv == ILLMOVE) {
+                    printf("Illegal move, try again\n");
+                }
+            }
+
+            exit_on_error(fd, rv);
+
+            rv = print_board(fd);
+            exit_on_error(fd, rv);
+
+            printf("Requesting CPU move...\n");
+            rv = request_cpu_move(fd);
+            exit_on_error(fd, rv);
+
+            rv = print_board(fd);
+            exit_on_error(fd, rv);
+        }
+        else {
+            printf("Requesting CPU move...\n");
+            rv = request_cpu_move(fd);
+            exit_on_error(fd, rv);
+
+            rv = print_board(fd);
+            exit_on_error(fd, rv);
+
+            rv = ILLMOVE;
+            while(rv == ILLMOVE) { 
+	    read_move(&x, &y);
+                rv = make_move(fd, x, y);
+
+                if(rv == ILLMOVE) {
+                    printf("Illegal move, try again\n");
+                }
+            }
+
+            exit_on_error(fd, rv);
+
+            rv = print_board(fd);
+            exit_on_error(fd, rv);
+        }
+    }
+
     /* Never reached... */
     return 0;
 }
 
-    
