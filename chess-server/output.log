@@ -1,0 +1,4 @@
+{"message":"Could not load .env file. Using default values","level":"info"}
+{"message":"Checking for newer versions...","level":"info"}
+{"message":"Unable to get version information.","level":"error"}
+{"message":"Now listening on port 3000...","level":"info"}

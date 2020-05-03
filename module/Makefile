@@ -1,4 +1,4 @@
-obj-m := tictactoe.o
+obj-m := chess.o
 
 
 KDIR ?= /lib/modules/$(shell uname -r)/build
